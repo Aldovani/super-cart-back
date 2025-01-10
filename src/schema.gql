@@ -1,0 +1,41 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Merchant {
+  id: ID!
+  corporateName: String!
+  tradeName: String!
+  logoUrl: String!
+  bannerUrl: String!
+  cnpj: String!
+  isActive: Boolean!
+  isValidated: Boolean!
+  email: String!
+  password: String!
+  minDeliveryValue: Float!
+  type: MerchantType!
+}
+
+"""Merchant Type"""
+enum MerchantType {
+  SUPERMARKET
+  GREEN_GROCER
+  BUTCHER
+  BAKERY
+  ICE_CREAM_PARLOR
+}
+
+type Query {
+  me: String!
+}
+
+type Mutation {
+  createMerchant(data: CreateMerchantInput!): Merchant!
+}
+
+input CreateMerchantInput {
+  cnpj: String!
+  email: String!
+  password: String!
+}

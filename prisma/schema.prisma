@@ -12,3 +12,233 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum MerchantType {
+  SUPERMARKET
+  GREEN_GROCER
+  BUTCHER
+  BAKERY
+  MINIMATKETS
+  ICE_CREAM_PARLOR
+}
+
+enum ProductUnit {
+  Kilogram
+  Gram
+  Liter
+  Milliliter
+  Piece
+  Box
+  Pack
+  Dozen
+  Meter
+  Centimeter
+}
+
+enum ProductStatus {
+  unavailable
+  available
+  preparation
+}
+
+enum PaymentMethodsType {
+  local
+  online
+}
+
+model Merchant {
+  id               String       @id @default(uuid())
+  corporateName    String
+  tradeName        String
+  logoUrl          String?
+  bannerUrl        String?
+  cnpj             String       @unique
+  description      String?
+  isActive         Boolean      @default(true)
+  isValidated      Boolean      @default(false)
+  isEmailValidated Boolean      @default(false)
+  email            String       @unique
+  password         String
+  minDeliveryValue Float?
+  type             MerchantType
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Address                Address?
+  Contacts               Contact[]
+  Product                Product[]
+  MerchantPaymentMethods MerchantPaymentMethods[]
+  StockEntry             StockEntry[]
+  StockOutput            StockOutput[]
+  Sale                   Sale[]
+}
+
+model Address {
+  id       Int    @id @default(autoincrement())
+  street   String
+  city     String
+  state    String
+  cep      String
+  district String
+
+  merchantId String   @unique
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model Contact {
+  id          Int    @id @default(autoincrement())
+  phoneNumber String
+
+  Merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  merchantId String
+}
+
+model Product {
+  id String @id @default(uuid())
+
+  name        String
+  description String @db.Text
+  salesPrice  Float
+  costPrice   Float
+  imgUrl      String
+
+  unit   ProductUnit
+  status ProductStatus @default(preparation)
+
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  merchantId String
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  ProductCategories ProductCategories[]
+  StockEntry        StockEntry[]
+  StockOutput       StockOutput[]
+  OrderProduct      OrderProduct[]
+  stock             Stock?
+}
+
+model Category {
+  id          Int    @id @default(autoincrement())
+  name        String
+  description String
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  ProductCategories ProductCategories[]
+}
+
+model ProductCategories {
+  productId  String
+  categoryId Int
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([productId, categoryId])
+}
+
+model PaymentMethods {
+  id String @id @default(uuid())
+
+  name                   String
+  type                   PaymentMethodsType
+  MerchantPaymentMethods MerchantPaymentMethods[]
+}
+
+model MerchantPaymentMethods {
+  paymentMethodId String
+  merchantId      String
+
+  merchant      Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  paymentMethod PaymentMethods @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([merchantId, paymentMethodId])
+}
+
+model Stock {
+  id        Int      @id @default(autoincrement())
+  productId String   @unique
+  quantity  Int
+  updatedAt DateTime @updatedAt
+
+  Product Product @relation(fields: [productId], references: [id])
+}
+
+model StockEntry {
+  id             Int      @id @default(autoincrement())
+  quantity       Float
+  expirationDate DateTime
+  batch          String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  productId      String
+  merchantId     String
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model StockOutput {
+  id          Int      @id @default(autoincrement())
+  quantity    Float
+  reason      String?
+  batch       String
+  releaseDate DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  productId   String
+  merchantId  String
+  saleId      Int?
+
+  product  Product  @relation(fields: [productId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  sale     Sale?    @relation(fields: [saleId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+}
+
+model Sale {
+  id        Int      @id @default(autoincrement())
+  total     Float    @db.Real
+  saleDate  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  merchantId String
+  orderId    String
+
+  StockOutput StockOutput[]
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model Order {
+  id               String   @id @default(uuid())
+  subTotal         Float
+  orderDate        DateTime
+  receiptDate      DateTime
+  notes            String?
+  modificationDate DateTime @updatedAt
+  Sale             Sale[]
+
+  userId String
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  OrderProduct OrderProduct[]
+}
+
+model User {
+  id    String  @id @default(uuid())
+  Order Order[]
+}
+
+model OrderProduct {
+  id               Int      @id @default(autoincrement())
+  quantity         Float
+  creationDate     DateTime
+  modificationDate DateTime
+  productId        String
+  orderId          String
+
+  product Product @relation(fields: [productId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+}
